@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 90e89a0d929a4e608ac861db71e6dd48, type: 3}
+  m_Name: CardView settings
+  m_EditorClassIdentifier: 
+  _elementSprites:
+  - {fileID: 1523962363, guid: 95be8b2e4e006de4fa1d6b1b74df11da, type: 3}
+  - {fileID: 170540912, guid: 95be8b2e4e006de4fa1d6b1b74df11da, type: 3}
+  - {fileID: 772402058, guid: 95be8b2e4e006de4fa1d6b1b74df11da, type: 3}
+  - {fileID: 1114312691, guid: 95be8b2e4e006de4fa1d6b1b74df11da, type: 3}
+  _suitSprites:
+  - {fileID: 1579701561, guid: bd5bf3e4a4a926a4eb89b28ace96fa49, type: 3}
+  - {fileID: -295802317, guid: bd5bf3e4a4a926a4eb89b28ace96fa49, type: 3}
+  - {fileID: -1626388694, guid: bd5bf3e4a4a926a4eb89b28ace96fa49, type: 3}
+  - {fileID: 1226962086, guid: bd5bf3e4a4a926a4eb89b28ace96fa49, type: 3}
+  _actionSprites:
+  - {fileID: 21300000, guid: 00552670c7154914b875bde65609147e, type: 3}
+  - {fileID: 21300000, guid: c9a5debc7c337c241bede529228e5b4a, type: 3}
