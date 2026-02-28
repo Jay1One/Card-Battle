@@ -54,7 +54,7 @@ namespace Gameplay.Systems
             Player = _diContainer.InstantiatePrefab(_playerPrefab, _playerSpawnPoint.position,
                 Quaternion.identity, transform).GetComponent<Player>();
             
-            var health = Player.GetComponent<Health>();
+            var health = Player.Health;
             health.Initialize(_runState.PlayerMaxHp, _runState.PlayerCurrentHp);
         }
 

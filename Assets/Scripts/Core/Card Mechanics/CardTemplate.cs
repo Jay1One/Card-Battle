@@ -1,6 +1,6 @@
 namespace Core.Card_Mechanics
 {
-    public class CardTemplate
+    public struct CardTemplate
     {
         public CardActionType ActionType { get; }
         public Suit Suit { get; }

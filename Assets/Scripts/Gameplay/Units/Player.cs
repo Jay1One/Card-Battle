@@ -19,7 +19,7 @@ namespace Gameplay.Units
 
         private void OnPlayerTurnStarted()
         {
-            Armor.ResetValue();
+            _armor.ResetValue();
         }
         
         protected override void Die()

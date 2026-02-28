@@ -3,24 +3,16 @@ using UnityEngine;
 
 namespace Gameplay.Units
 {
-    public class Health : MonoBehaviour
+    [Serializable]
+    public class Health
     {
         [SerializeField] private int _maxHealth;
-        public event Action<int> HealthChanged;
         private int _currentHealth;
         
         public int MaxHealth => _maxHealth;
         public int CurrentHealth => _currentHealth;
-
-        private void Awake()
-        {
-            _currentHealth = _maxHealth;
-        }
-
-        private void Start()
-        {
-            HealthChanged?.Invoke(_currentHealth);
-        }
+        
+        public event Action<int> HealthChanged;
 
         public void TakeDamage(int damage)
         {
@@ -38,7 +30,11 @@ namespace Gameplay.Units
         {
             _maxHealth = maxHp;
             _currentHealth = currentHp;
-            HealthChanged?.Invoke(_currentHealth);
+        }
+
+        public void Initialize(int maxHp)
+        {
+            Initialize(maxHp, maxHp);
         }
     }
 }

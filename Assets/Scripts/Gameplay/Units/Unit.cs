@@ -1,16 +1,18 @@
-﻿using System.Threading;
+﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using Zenject;
 
 namespace Gameplay.Units
 {
-    [RequireComponent(typeof(Health))]
-    [RequireComponent(typeof(Armor))]
     public abstract class Unit : MonoBehaviour
-    { 
-        [SerializeField] protected Health Health; 
-        [SerializeField] protected Armor Armor;
+    {
+        [SerializeField] protected Health _health; 
+        [SerializeField] protected Armor _armor;
+        
+        public Health Health => _health;
+        public Armor Armor => _armor;
         
         protected SignalBus SignalBus;
         private UnitAnimation _animation;
@@ -25,18 +27,23 @@ namespace Gameplay.Units
         {
             SignalBus = signalBus;
         }
-        
+
+        private void OnValidate()
+        {
+            _health.Initialize(_health.MaxHealth);
+        }
+
         private void TakeDamage(int damage)
         {
             int remainingDamage = damage;
-            Armor.BlockDamage(ref remainingDamage);
+            _armor.BlockDamage(ref remainingDamage);
             
             if (remainingDamage>0)
             {
-                Health.TakeDamage(remainingDamage);
+                _health.TakeDamage(remainingDamage);
             }
 
-            if (Health.CurrentHealth==0)
+            if (_health.CurrentHealth==0)
             {
                 Die();
             }
@@ -53,7 +60,7 @@ namespace Gameplay.Units
             
             await _blockFrameReachedCompletionSource.Task;
             
-            Armor.AddArmor(block);
+            _armor.AddArmor(block);
             
             _blockFinishedCompletionSource = new TaskCompletionSource<bool>();
             
@@ -100,7 +107,10 @@ namespace Gameplay.Units
         
         protected virtual void Awake()
         {
+            _health.Initialize(_health.MaxHealth);
+            
             _animation = GetComponent<UnitAnimation>();
+            
             _animation.AttackFrameReached += OnAttackFrameReached;
             _animation.AttackAnimationFinished += OnAttackAnimationFinished;
             _animation.BlockFrameReached += OnBlockFrameReached;

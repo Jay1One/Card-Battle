@@ -101,7 +101,7 @@ namespace Gameplay.Systems
             if (_isBattleOver) return;
 
             _isBattleOver = true;
-            _runState.ApplyBattleResult(_unitsSystem.Player.GetComponent<Health>().CurrentHealth);
+            _runState.ApplyBattleResult(_unitsSystem.Player.Health.CurrentHealth);
             _signalBus.Fire(new BattleEndedSignal(isWin));
         }
     }

@@ -1,9 +1,9 @@
 ﻿using System;
-using UnityEngine;
 
 namespace Gameplay.Units
 {
-    public class Armor : MonoBehaviour
+    [Serializable]
+    public class Armor
     {
         public int Value { get; private set; }
         

@@ -6,12 +6,14 @@ namespace UI.BattleScene.Views
 {
     public class ArmorIndicator : MonoBehaviour
     {
+        [SerializeField] private Unit _unit;
         [SerializeField] private TMP_Text _armorText;
-        [SerializeField] private Armor _armor;
         [SerializeField] private CanvasGroup _canvasGroup;
+        private Armor _armor;
 
         private void Awake()
         {
+            _armor = _unit.Armor;
             _armor.ValueChanged += UpdateIndicator;
             
             UpdateIndicator();

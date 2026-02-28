@@ -8,16 +8,23 @@ namespace UI.BattleScene.Views
 {
     public class HealthBar : MonoBehaviour
     {
-        [SerializeField] private Health _health;
+        [SerializeField] private Unit _unit;
         [SerializeField] private Image _fillImage;
         [SerializeField] private TMP_Text _healthText;
         [SerializeField] private float _updateTime = 0.5f;
+        private Health _health;
         
         private Coroutine _updateCoroutine;
 
         private void Awake()
         {
+            _health = _unit.Health;
             _health.HealthChanged += OnHealthChanged;
+        }
+
+        private void Start()
+        {
+            OnHealthChanged(_health.CurrentHealth);
         }
 
         private void OnHealthChanged(int health)

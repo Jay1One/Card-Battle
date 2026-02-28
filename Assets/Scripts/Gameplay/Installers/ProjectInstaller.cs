@@ -38,7 +38,7 @@ namespace Gameplay.Installers
             Container.Bind<LevelsCatalogSo>().FromScriptableObject(_catalog).AsSingle();
             Container.Bind<LevelProgression>().AsSingle();
             Container.Bind<SceneLoader>().AsSingle();
-            Container.Bind<RunState>().AsSingle().WithArguments(_playerPrefab.GetComponent<Health>());
+            Container.Bind<RunState>().AsSingle().WithArguments(_playerPrefab.Health);
             Container.Bind<DeckBuilder>().AsTransient();
         }
     }

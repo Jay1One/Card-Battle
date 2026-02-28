@@ -227,7 +227,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe2cc047a0914109b519311ef2648e1e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _health: {fileID: 8045374643655706671}
+  _unit: {fileID: 3073890044660036309}
   _fillImage: {fileID: 903142950338916408}
   _healthText: {fileID: 7831126829291445924}
   _updateTime: 0.5
@@ -1476,8 +1476,6 @@ GameObject:
   m_Component:
   - component: {fileID: 2045372245447668639}
   - component: {fileID: 3073890044660036309}
-  - component: {fileID: 8045374643655706671}
-  - component: {fileID: 7887053067055683742}
   - component: {fileID: 7097188363144319122}
   - component: {fileID: 5998620530781468900}
   m_Layer: 0
@@ -1516,34 +1514,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 96fc4a23cc3f4d90949d66a149f417ae, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Health: {fileID: 8045374643655706671}
-  Armor: {fileID: 7887053067055683742}
+  _health:
+    _maxHealth: 30
   _attackDamage: 7
---- !u!114 &8045374643655706671
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5201974407990566842}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: de0879f01e1f45c48a90df83077261f0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _maxHealth: 15
---- !u!114 &7887053067055683742
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5201974407990566842}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0046265c13044766afb594a886a35bf3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!95 &7097188363144319122
 Animator:
   serializedVersion: 5

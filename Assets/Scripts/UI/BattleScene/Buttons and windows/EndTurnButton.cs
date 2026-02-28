@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
 
-namespace UI.BattleScene.Buttons
+namespace UI.BattleScene.Buttons_and_windows
 {
      public class EndTurnButton : MonoBehaviour
      {

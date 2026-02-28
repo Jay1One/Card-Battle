@@ -365,8 +365,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1449505005860747577}
   - component: {fileID: 6097778196100663491}
-  - component: {fileID: 6736847947818243224}
-  - component: {fileID: 1588898279360776249}
   - component: {fileID: 1294518402893709429}
   - component: {fileID: 942997390160804856}
   m_Layer: 0
@@ -405,33 +403,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a53aa6813e0b4b4d937ea55a2b9fd0b1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Health: {fileID: 6736847947818243224}
-  Armor: {fileID: 1588898279360776249}
---- !u!114 &6736847947818243224
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1623434491179756389}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: de0879f01e1f45c48a90df83077261f0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _maxHealth: 50
---- !u!114 &1588898279360776249
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1623434491179756389}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0046265c13044766afb594a886a35bf3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  _health:
+    _maxHealth: 66
 --- !u!95 &1294518402893709429
 Animator:
   serializedVersion: 5
@@ -468,6 +441,7 @@ MonoBehaviour:
   _attackRange: 1
   _approachTime: 0.2
   _deathDisappearTime: 1
+  _timeStandingAfterAttack: 0.2
 --- !u!1 &2216465861784856816
 GameObject:
   m_ObjectHideFlags: 0
@@ -944,8 +918,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 90f057533cda45f7bd38dae004e12130, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _unit: {fileID: 6097778196100663491}
   _armorText: {fileID: 271522219486154748}
-  _armor: {fileID: 1588898279360776249}
   _canvasGroup: {fileID: 6785045313157744597}
 --- !u!1 &3588517720165745030
 GameObject:
@@ -2020,7 +1994,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe2cc047a0914109b519311ef2648e1e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _health: {fileID: 6736847947818243224}
+  _unit: {fileID: 6097778196100663491}
   _fillImage: {fileID: 7438412949170409595}
   _healthText: {fileID: 8684089502634785514}
   _updateTime: 0.5
