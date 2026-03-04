@@ -1,12 +1,11 @@
 ﻿using System;
-using UnityEngine;
 
 namespace Gameplay.Units
 {
     [Serializable]
     public class Health
     {
-        [SerializeField] private int _maxHealth;
+        private int _maxHealth;
         private int _currentHealth;
         
         public int MaxHealth => _maxHealth;
