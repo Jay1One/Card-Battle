@@ -1,6 +1,5 @@
-﻿using System.Threading;
-using System.Threading.Tasks;
-using Core.Signals;
+﻿using System;
+using System.Collections;
 using UnityEngine;
 
 namespace Gameplay.Units
@@ -8,31 +7,17 @@ namespace Gameplay.Units
     public class Enemy : Unit
     {
         [SerializeField] private int _attackDamage = 10;
-        private int _enemyId;
-
-        public void SetId(int id)
-        {
-            _enemyId = id;
-        }
+      
+        public event Action<Enemy> EnemyDied;
         
-        public async Task MakeTurnAsync(Player player, CancellationToken ct)
+        public IEnumerator MakeTurnCoroutine(Player player)
         {
-            await AttackAsync(player, _attackDamage, ct);
-        }
-
-        public override async Task AttackAsync(Unit target, int damage, CancellationToken ct)
-        {
-            if (!((Player)target).IsAlive)
-            {
-                return;
-            }
-            
-            await base.AttackAsync(target, damage, ct);
+            yield return AttackCoroutine(player, _attackDamage);
         }
 
         protected override void Die()
         {
-            SignalBus.Fire(new EnemyDiedSignal(_enemyId));
+            EnemyDied?.Invoke(this);
             base.Die();
         }
     }

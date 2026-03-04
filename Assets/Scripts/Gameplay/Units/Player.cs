@@ -1,20 +1,21 @@
-﻿using Core.Signals;
+﻿using System;
 
 namespace Gameplay.Units
 {
     public class Player : Unit
     {
         public bool IsAlive { get; private set; } = true;
+        public event Action PlayerDied;
         
         protected override void Awake()
         {
             base.Awake();
-            SignalBus.Subscribe<PlayerTurnStartedSignal>(OnPlayerTurnStarted);
+            BattleController.PlayerTurnStarted += OnPlayerTurnStarted;
         }
 
         private void OnDestroy()
         {
-            SignalBus.Unsubscribe<PlayerTurnStartedSignal>(OnPlayerTurnStarted);
+            BattleController.PlayerTurnStarted -= OnPlayerTurnStarted;
         }
 
         private void OnPlayerTurnStarted()
@@ -26,7 +27,7 @@ namespace Gameplay.Units
         {
             base.Die();
             IsAlive = false;
-            SignalBus.Fire<PlayerDiedSignal>();
+            PlayerDied.Invoke();
         }
     }
 }

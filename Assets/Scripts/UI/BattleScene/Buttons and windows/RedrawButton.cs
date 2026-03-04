@@ -1,4 +1,4 @@
-﻿using Core.Signals;
+﻿using Gameplay.Systems;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -10,12 +10,14 @@ namespace UI.BattleScene.Buttons_and_windows
     {
         [SerializeField] private Button _button;
         [SerializeField] private TMP_Text _rerollText;
-        private SignalBus _signalBus;
+        private DeckController _deckController;
+        private RedrawSystem _redrawSystem;
         
         [Inject]
-        private void Construct(SignalBus signalBus)
+        private void Construct(DeckController deckController, RedrawSystem redrawSystem)
         {
-            _signalBus = signalBus;
+            _deckController = deckController;
+            _redrawSystem = redrawSystem;
         }
 
         private void Awake()
@@ -23,10 +25,11 @@ namespace UI.BattleScene.Buttons_and_windows
             _button.interactable = false;
             _button.onClick.AddListener(OnButtonClicked);
             
-            _signalBus.Subscribe<CardLockChangeProcessedSignal>(OnCardLockChangeProcessed);
-            _signalBus.Subscribe<StartingHandDealtSignal>(OnStartingHandDealt);
-            _signalBus.Subscribe<RedrawsChangedSignal>(OnReDrawFinished);
-            _signalBus.Subscribe<EndTurnRequestedSignal>(OnEndTurnRequested);
+            _deckController.StartingHandDealt+= OnStartingHandDealt;
+            _redrawSystem.RedrawsChanged += OnReDrawsChanged;
+
+            _redrawSystem.RerollPossibilityChanged += OnRerollPossibilityChanged;
+            _deckController.EndTurnRequested -= OnEndTurnRequested;
         }
 
         private void OnStartingHandDealt()
@@ -34,15 +37,15 @@ namespace UI.BattleScene.Buttons_and_windows
             _button.interactable = true;
         }
 
-        private void OnCardLockChangeProcessed(CardLockChangeProcessedSignal signal)
+        private void OnRerollPossibilityChanged(bool isPossible)
         {
-            _button.interactable = signal.IsRerollPossible;
+            _button.interactable = isPossible;
         }
 
         private void OnButtonClicked()
         {
             _button.interactable = false;
-            _signalBus.Fire(new RedrawStartedSignal());
+            _redrawSystem.StartRedraw();
         }
 
         private void OnEndTurnRequested()
@@ -50,18 +53,18 @@ namespace UI.BattleScene.Buttons_and_windows
             _button.interactable = false;
         }
 
-        private void OnReDrawFinished(RedrawsChangedSignal signal)
+        private void OnReDrawsChanged(int redrawsLeft)
         {
-            _rerollText.text = signal.RerollsLeft.ToString();
-            _button.interactable = !signal.RerollsFinished;
+            _rerollText.text = redrawsLeft.ToString();
+            _button.interactable = redrawsLeft > 0;
         }
 
         private void OnDestroy()
         {
-            _signalBus.Unsubscribe<CardLockChangeProcessedSignal>(OnCardLockChangeProcessed);
-            _signalBus.Unsubscribe<StartingHandDealtSignal>(OnStartingHandDealt);
-            _signalBus.Unsubscribe<RedrawsChangedSignal>(OnReDrawFinished);
-            _signalBus.Unsubscribe<EndTurnRequestedSignal>(OnEndTurnRequested);
+            _deckController.StartingHandDealt-= OnStartingHandDealt;
+            _redrawSystem.RerollPossibilityChanged += OnRerollPossibilityChanged;
+            _redrawSystem.RedrawsChanged -= OnReDrawsChanged;
+            _deckController.EndTurnRequested -= OnEndTurnRequested;
         }
     }
 }

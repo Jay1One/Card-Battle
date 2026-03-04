@@ -20,39 +20,22 @@ namespace Gameplay.Installers
 
         private void DeclareSignals()
         {
-            Container.DeclareSignal<PlayerTurnStartedSignal>(); 
-            Container.DeclareSignal<PlayerTurnFinishedSignal>();
-            Container.DeclareSignal<EndTurnRequestedSignal>();
-            
-            Container.DeclareSignal<DrawCardStartedSignal>();
-            Container.DeclareSignal<DrawCardFinishedSignal>();
-        
-            Container.DeclareSignal<PlayCardStartedSignal>();
-            Container.DeclareSignal<PlayCardFinishedSignal>();
-        
-            Container.DeclareSignal<DiscardCardStartedSignal>();
-            Container.DeclareSignal<DiscardCardFinishedSignal>();
-        
-            Container.DeclareSignal<StartingHandDealtSignal>();
-        
-            Container.DeclareSignal<CardLockChangeRequestedSignal>();
-            Container.DeclareSignal<CardLockChangeProcessedSignal>();
-
-            Container.DeclareSignal<RedrawStartedSignal>();
-            Container.DeclareSignal<RedrawsChangedSignal>();
-        
-            Container.DeclareSignal<EnemyDiedSignal>();
-            Container.DeclareSignal<EnemyDeathRegisteredSignal>();
-
-            Container.DeclareSignal<PlayerDiedSignal>();
             Container.DeclareSignal<BattleEndedSignal>();
         }
 
         private void BindBattleSystems()
         {
             Container.BindInterfacesAndSelfTo<BattleController>().AsSingle();
-            Container.BindInterfacesAndSelfTo<DeckController>().AsSingle();
-            Container.BindInterfacesAndSelfTo<RedrawSystem>().AsSingle();
+            
+            Container.Bind<DeckController>().
+                FromNewComponentOnNewGameObject().WithGameObjectName("Deck controller").AsSingle();
+            
+            Container.Bind<EnemiesTurnSystem>().
+                FromNewComponentOnNewGameObject().WithGameObjectName("Enemies turn system").AsSingle();
+            
+            Container.BindInterfacesAndSelfTo<RedrawSystem>().
+                FromNewComponentOnNewGameObject().WithGameObjectName("Redraw system").AsSingle();
+            
             Container.Bind<UnitsSystem>().FromInstance(_unitsSystem).AsSingle();
             Container.BindInterfacesAndSelfTo<ComboSystem>().AsSingle();
         }

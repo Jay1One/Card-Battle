@@ -1,117 +1,106 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using Core.Card_Mechanics;
-using Core.Signals;
+using UnityEngine;
 using Zenject;
 
 namespace Gameplay.Systems
 {
-    public class RedrawSystem : IInitializable, IDisposable
+    public class RedrawSystem : MonoBehaviour, IInitializable, IDisposable
     {
         private const int MaxRerolls = 3;
         
-        private readonly SignalBus _signalBus;
-        private readonly DeckController _deckController;
+        private DeckController _deckController;
         private readonly bool [] _handLockedStates = new bool[Deck.HandSize];
         private int _currentRedraws;
         private bool _isPlayerTurn;
         private bool _redrawInProgress;
-        private readonly CancellationTokenSource _cts = new CancellationTokenSource();
+        int _discardActionsLeft;
+        int _drawActionsLeft;
 
+        
+        public event Action<int> RedrawsChanged;
+        public event Action<bool> CardLockRequestProcessed;
+        public event Action<bool> RerollPossibilityChanged;
+        
         [Inject]
-        public RedrawSystem(SignalBus signalBus, DeckController deckController)
+        public void Construct(DeckController deckController)
         {
-            _signalBus = signalBus;
             _deckController = deckController;
         }
 
         public void Initialize()
         {
-            _signalBus.Subscribe<StartingHandDealtSignal>(OnStartingHandDealt);
-            _signalBus.Subscribe<CardLockChangeRequestedSignal>(OnCardLockChangeRequested);
-            _signalBus.Subscribe<RedrawStartedSignal>(OnRedrawStarted);
+            _deckController.StartingHandDealt += OnStartingHandDealt;
         }
         
         public void Dispose()
         {
-            _signalBus.Unsubscribe<StartingHandDealtSignal>(OnStartingHandDealt);
-            _signalBus.Unsubscribe<RedrawStartedSignal>(OnRedrawStarted);
-            _signalBus.Unsubscribe<CardLockChangeRequestedSignal>(OnCardLockChangeRequested);
-            
-            _cts.Cancel();
-            _cts.Dispose();
+            _deckController.StartingHandDealt -= OnStartingHandDealt;
         }
 
-        private void OnRedrawStarted()
+        public void StartRedraw()
         {
             if (_redrawInProgress || !_isPlayerTurn || _currentRedraws <= 0)
             {
                 return;
             }
-            
-            _redrawInProgress = true;
-            _ = RedrawAsync(_cts.Token);
+
+            StartCoroutine(RedrawCoroutine());
         }
 
-        private async Task RedrawAsync(CancellationToken ct)
+        private IEnumerator RedrawCoroutine()
         {
-            try
+            _redrawInProgress = true;
+            _currentRedraws--;
+            _discardActionsLeft = 0;
+            _drawActionsLeft = 0;
+            
+            List<int> handIndexes = new List<int>();
+            
+            for (int i = 0; i < _handLockedStates.Length; i++)
             {
-                _currentRedraws--;
-
-                List<int> handIndexes = new List<int>();
-
-                for (int i = 0; i < _handLockedStates.Length; i++)
+                if (_handLockedStates[i] == false)
                 {
-                    if (_handLockedStates[i] == false)
-                    {
-                        handIndexes.Add(i);
-                    }
+                    handIndexes.Add(i);
                 }
-
-                List<Task> discardTasks = new List<Task>();
-
-                foreach (int handIndex in handIndexes)
-                {
-                    discardTasks.Add(_deckController.DiscardCardAsync(handIndex, ct));
-                }
-
-                await Task.WhenAll(discardTasks);
-
-                List<Task> drawTasks = new List<Task>();
-
-                foreach (int handIndex in handIndexes)
-                {
-                    drawTasks.Add(_deckController.DrawCardAsync(handIndex, ct));
-                }
-
-                await Task.WhenAll(drawTasks);
-
-                if (_currentRedraws == 0)
-                {
-                    for (int i = 0; i < _handLockedStates.Length; i++)
-                    {
-                        if (_handLockedStates[i] == true)
-                        {
-                            _handLockedStates[i] = false;
-                            _signalBus.Fire(new CardLockChangeProcessedSignal(i, true, 
-                                false, _handLockedStates[i]));
-                        }
-                    }
-                }
-
-                _signalBus.Fire(new RedrawsChangedSignal(_currentRedraws, _currentRedraws <= 0));
+            }
+      
+            foreach (int index in handIndexes)
+            {
+                _discardActionsLeft++;
+                StartCoroutine(_deckController.DiscardCardCoroutine(index, RegisterDiscardEnd));
             }
 
-            catch (OperationCanceledException)
+            while (_discardActionsLeft > 0)
             {
+                yield return null;
             }
-            finally
+            
+            foreach (int index in handIndexes)
             {
-                _redrawInProgress = false;
+                _drawActionsLeft++;
+                StartCoroutine(_deckController.DrawCardCoroutine(index, RegisterDrawEnd));
             }
+
+            while (_drawActionsLeft > 0)
+            {
+                yield return null;
+            }
+            
+            _redrawInProgress = false;
+            RedrawsChanged?.Invoke(_currentRedraws);
+        }
+        
+        private void RegisterDiscardEnd()
+        {
+            _discardActionsLeft--;
+        }
+        
+        private void RegisterDrawEnd()
+        {
+            _drawActionsLeft--;
         }
 
         private void OnStartingHandDealt()
@@ -123,7 +112,8 @@ namespace Gameplay.Systems
             {
                 _handLockedStates[i] = false;
             }
-            _signalBus.Fire(new RedrawsChangedSignal(_currentRedraws, _currentRedraws <= 0));
+            
+            RedrawsChanged?.Invoke(_currentRedraws);
         }
 
         private bool AreAllCardsLocked()
@@ -138,20 +128,21 @@ namespace Gameplay.Systems
                     break;
                 }
             }
+            
             return result;
         }
 
-        private void OnCardLockChangeRequested(CardLockChangeRequestedSignal signal)
+        public void TryChangeCardLockState(int handIndex)
         {
             bool isLockChangeAllowed = _isPlayerTurn && _currentRedraws > 0 && !_redrawInProgress;
             
             if (isLockChangeAllowed)
             {
-                _handLockedStates[signal.HandIndex] = !_handLockedStates[signal.HandIndex];
+                _handLockedStates[handIndex] = !_handLockedStates[handIndex];
             }
             
-            _signalBus.Fire(new CardLockChangeProcessedSignal(signal.HandIndex, isLockChangeAllowed,
-                !AreAllCardsLocked(), _handLockedStates[signal.HandIndex]));
+            CardLockRequestProcessed?.Invoke(isLockChangeAllowed);
+            RerollPossibilityChanged?.Invoke(!AreAllCardsLocked() && _currentRedraws > 0);
         }
     }
 }

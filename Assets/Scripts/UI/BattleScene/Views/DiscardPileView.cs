@@ -1,5 +1,5 @@
 ﻿using Core.Card_Mechanics;
-using Core.Signals;
+using Gameplay.Systems;
 using TMPro;
 using UnityEngine;
 using Zenject;
@@ -10,26 +10,26 @@ namespace UI.BattleScene.Views
     {
         [SerializeField] private TMP_Text _counterText;
         
-        private SignalBus _signalBus;
+        private DeckController _deckController;
         private Deck _deck;
 
         [Inject]
-        public void Construct(Deck deck, SignalBus signalBus)
+        public void Construct(Deck deck, DeckController deckController)
         {
-            _signalBus = signalBus;
+            _deckController = deckController;
             _deck = deck;
         }
 
         private void Awake()
         {
-            _signalBus.Subscribe<DiscardCardFinishedSignal>(UpdateCounter);
-            _signalBus.Subscribe<DrawCardStartedSignal>(UpdateCounter);
+            _deckController.CardDrawEnded += UpdateCounter;
+            _deckController.CardDiscardEnded += UpdateCounter;
         }
 
         private void OnDestroy()
         {
-            _signalBus.Unsubscribe<DiscardCardFinishedSignal>(UpdateCounter);
-            _signalBus.Unsubscribe<DrawCardStartedSignal>(UpdateCounter);
+            _deckController.CardDrawEnded -= UpdateCounter;
+            _deckController.CardDiscardEnded -= UpdateCounter;
         }
 
         private void UpdateCounter()

@@ -1,6 +1,6 @@
 ﻿using Core.Card_Mechanics;
-using Core.Signals;
 using DG.Tweening;
+using Gameplay.Systems;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -16,8 +16,8 @@ namespace UI.BattleScene.Views
             [SerializeField] private SpriteRenderer _frame;
             [SerializeField] private TMP_Text _valueText;
             
-            private SignalBus _signalBus;
             private Card _card;
+            private RedrawSystem _redrawSystem;
             private int _handIndex;
             private bool _isAtHand;
             private float _scaleTime = 0.2f;
@@ -25,10 +25,11 @@ namespace UI.BattleScene.Views
             
 
             [Inject]
-            private void Construct(SignalBus signalBus)
+            private void Construct(RedrawSystem redrawSystem)
             {
-                  _signalBus = signalBus;
+                  _redrawSystem = redrawSystem;
             }
+            
             public void Initialize(Card card, Sprite suitSprite, Sprite elementSprite, Sprite actionTypeSprite)
             {
                   _suitSprite.sprite= suitSprite;
@@ -38,13 +39,12 @@ namespace UI.BattleScene.Views
                   _card = card;
                   
                   _card.ComboBonusApplied += OnComboBonusApplied;
-                  _signalBus.Subscribe<CardLockChangeProcessedSignal>(OnCardViewLockChangeProcessed);
             }
 
             private void OnDestroy()
             {
+                  transform.DOKill();
                   _card.ComboBonusApplied -= OnComboBonusApplied;
-                  _signalBus.Unsubscribe<CardLockChangeProcessedSignal>(OnCardViewLockChangeProcessed);
             }
 
             public void PlaceAtHand(int handIndex)
@@ -57,20 +57,22 @@ namespace UI.BattleScene.Views
             {
                   if (_isAtHand)
                   {
-                        _signalBus.Fire(new CardLockChangeRequestedSignal(_handIndex));   
+                        _redrawSystem.CardLockRequestProcessed += OnCardViewLockChangeProcessed;
+                        _redrawSystem.TryChangeCardLockState(_handIndex);  
                   }
             }
 
-            private void OnCardViewLockChangeProcessed(CardLockChangeProcessedSignal signal)
+            private void OnCardViewLockChangeProcessed(bool isAllowed)
             {
-                  if (!_isAtHand || signal.HandIndex != _handIndex)
+                  _redrawSystem.CardLockRequestProcessed -= OnCardViewLockChangeProcessed;
+                  if (!_isAtHand)
                   {
                         return;
                   }
                   
-                  if (signal.IsLockChangeAllowed)
+                  if (isAllowed)
                   {
-                        _frame.gameObject.SetActive(signal.IsLocked);
+                        _frame.gameObject.SetActive(!_frame.gameObject.activeSelf);
                   }
             }
 

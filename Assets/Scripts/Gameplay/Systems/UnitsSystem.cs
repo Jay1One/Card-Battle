@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using Core;
-using Core.Signals;
 using Gameplay.Progression;
 using Gameplay.Units;
 using UnityEngine;
@@ -17,36 +15,34 @@ namespace Gameplay.Systems
         [SerializeField] private Transform[] _enemySpawnPoints;
         [SerializeField] private Transform _playerSpawnPoint;
         
-        private readonly Dictionary<int, Enemy> _enemies = new Dictionary<int, Enemy>();
-        private int _nextEnemyId = 0;
-        
-        public  IReadOnlyDictionary<int,Enemy> Enemies => _enemies;
-        public Player Player { get; private set; }
-        
+        private readonly List<Enemy> _enemies = new List<Enemy>();
         private LevelDataSo _levelData;
-        private SignalBus _signalBus;
         private DiContainer _diContainer;
         private RunState _runState;
+        
+        public  IReadOnlyList<Enemy> Enemies => _enemies;
+        public Player Player { get; private set; }
+
+        public event Action PlayerDied;
+        public event Action EnemyDeathRegistered;
 
         [Inject]
-        public void Construct(LevelDataSo levelData, SignalBus signalBus, DiContainer diContainer, RunState runState)
+        public void Construct(LevelDataSo levelData, DiContainer diContainer, RunState runState)
         {
             _levelData = levelData;
-            _signalBus = signalBus;
             _diContainer = diContainer;
             _runState = runState;
         }
 
         private void Awake()
         {
-            _signalBus.Subscribe<EnemyDiedSignal>(OnEnemyDied);
             SpawnPlayer();
             SpawnStartingEnemies();
         }
 
         private void OnDestroy()
         {
-            _signalBus.Unsubscribe<EnemyDiedSignal>(OnEnemyDied);
+            Player.PlayerDied -= OnPlayerDied;
         }
 
         private void SpawnPlayer()
@@ -56,6 +52,7 @@ namespace Gameplay.Systems
             
             var health = Player.Health;
             health.Initialize(_runState.PlayerMaxHp, _runState.PlayerCurrentHp);
+            Player.PlayerDied += OnPlayerDied;
         }
 
         private void SpawnStartingEnemies()
@@ -70,15 +67,20 @@ namespace Gameplay.Systems
         {
             Enemy enemy = _diContainer.InstantiatePrefab(enemyPrefab, _enemySpawnPoints[spawnPointIndex].position,
                 Quaternion.identity, transform).GetComponent<Enemy>();
-            _nextEnemyId++;
-            enemy.SetId(_nextEnemyId);
-            _enemies.Add(_nextEnemyId, enemy);
+            _enemies.Add(enemy);
+            enemy.EnemyDied += OnEnemyDied;
         }
 
-        private void OnEnemyDied(EnemyDiedSignal signal)
+        private void OnEnemyDied(Enemy enemy)
         {
-            _enemies.Remove(signal.EnemyID);
-            _signalBus.Fire(new EnemyDeathRegisteredSignal());
+            enemy.EnemyDied -= OnEnemyDied;
+            _enemies.Remove(enemy);
+            EnemyDeathRegistered?.Invoke();
+        }
+
+        private void OnPlayerDied()
+        {
+            PlayerDied?.Invoke();
         }
     }
 }

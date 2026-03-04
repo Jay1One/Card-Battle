@@ -1,4 +1,4 @@
-﻿using Core.Signals;
+﻿using Gameplay.Systems;
 using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
@@ -8,25 +8,25 @@ namespace UI.BattleScene.Buttons_and_windows
      public class EndTurnButton : MonoBehaviour
      {
           [SerializeField] private Button _button;
-          private SignalBus _signalBus;
+          private DeckController _deckController;
 
           [Inject]
-          public void Construct(SignalBus signalBus)
+          public void Construct(SignalBus signalBus, DeckController deckController)
           {
-               _signalBus = signalBus;
+               _deckController = deckController;
           }
           
           private void Awake()
           {
                _button.interactable = false;
                _button.onClick.AddListener(OnButtonClicked);
-               _signalBus.Subscribe<StartingHandDealtSignal>(OnStartingHandDealt);
+               _deckController.StartingHandDealt += OnStartingHandDealt;
           }
 
           private void OnButtonClicked()
           {
                _button.interactable = false;
-               _signalBus.Fire(new EndTurnRequestedSignal());
+               _deckController.RequestTurnEnd();
           }
 
           private void OnStartingHandDealt()
@@ -36,7 +36,7 @@ namespace UI.BattleScene.Buttons_and_windows
 
           private void OnDestroy()
           {
-               _signalBus.Unsubscribe<StartingHandDealtSignal>(OnStartingHandDealt);
+               _deckController.StartingHandDealt -= OnStartingHandDealt;
           }
      }
 }

@@ -1,6 +1,5 @@
-﻿using System;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using System.Collections;
+using Gameplay.Systems;
 using UnityEngine;
 using Zenject;
 
@@ -14,18 +13,21 @@ namespace Gameplay.Units
         public Health Health => _health;
         public Armor Armor => _armor;
         
-        protected SignalBus SignalBus;
+        protected BattleController BattleController;
         private UnitAnimation _animation;
-        private TaskCompletionSource<bool> _attackDamageDealtCompletionSource;
-        private TaskCompletionSource<bool> _attackFinishedCompletionSource;
-        private TaskCompletionSource<bool> _blockFrameReachedCompletionSource;
-        private TaskCompletionSource<bool> _blockFinishedCompletionSource;
+        
+        private UnitAction _currentAction;
+
+        private bool _isAttackDamageDealt;
+        private bool _isAttackFinished;
+        private bool _isBlockFrameReached;
+        private bool _isBlockFinished;
         
         
         [Inject]
-        public void Construct(SignalBus signalBus)
+        public void Construct(BattleController battleController)
         {
-            SignalBus = signalBus;
+            BattleController = battleController;
         }
 
         private void OnValidate()
@@ -52,52 +54,51 @@ namespace Gameplay.Units
                 _animation.AnimateDamaged();
             }
         }
-        
-        public async Task GainBlockAsync(int block, CancellationToken ct)
-        {
-            _blockFrameReachedCompletionSource = new TaskCompletionSource<bool>();
-            _animation.AnimateBlock();
-            
-            await _blockFrameReachedCompletionSource.Task;
-            
-            _armor.AddArmor(block);
-            
-            _blockFinishedCompletionSource = new TaskCompletionSource<bool>();
-            
-            await _blockFinishedCompletionSource.Task;
-        }
 
-        public virtual async Task AttackAsync(Unit target, int damage,CancellationToken ct)
+        public IEnumerator AttackCoroutine (Unit target, int damage)
         {
-            _attackDamageDealtCompletionSource = new TaskCompletionSource<bool>();
+            _isAttackFinished = false;
+            _currentAction = new AttackAction(target,damage);
             _animation.AnimateAttack(target.transform);
             
-            await _attackDamageDealtCompletionSource.Task;
-            
-            target.TakeDamage(damage);
-            _attackFinishedCompletionSource = new TaskCompletionSource<bool>();
-            
-            await _attackFinishedCompletionSource.Task;
+            while (!_isAttackFinished)
+            {
+                yield return null;
+            }
+        }
+        
+        public IEnumerator GainBlockCoroutine(int blockAmount)
+        {
+            _isBlockFinished = false;
+            _currentAction = new BlockAction(blockAmount);
+            _animation.AnimateBlock();
+
+            while (!_isBlockFinished)
+            {
+                yield return null;
+            }
         }
 
         private void OnAttackFrameReached()
         {
-            _attackDamageDealtCompletionSource.TrySetResult(true);
+            AttackAction attackAction = (AttackAction)_currentAction;
+            attackAction.Target.TakeDamage(attackAction.Damage);
         }
 
         private void OnBlockFrameReached()
         {
-            _blockFrameReachedCompletionSource.TrySetResult(true);
+            BlockAction blockAction = (BlockAction)_currentAction;
+            _armor.AddArmor(blockAction.BlockAmount);
         }
 
         private void OnAttackAnimationFinished()
         {
-            _attackFinishedCompletionSource.TrySetResult(true);
+            _isAttackFinished = true;
         }
 
         private void OnBlockFinished()
         {
-            _blockFinishedCompletionSource.TrySetResult(true);
+            _isBlockFinished = true;
         }
 
         protected virtual void Die()

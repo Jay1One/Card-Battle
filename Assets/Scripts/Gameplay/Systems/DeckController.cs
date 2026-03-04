@@ -1,171 +1,128 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Core.Card_Mechanics;
-using Core.Signals;
-using Gameplay.Units;
+using UnityEngine;
 using Zenject;
 
 namespace Gameplay.Systems
 {
-    public class DeckController : IInitializable, IDisposable
+    public class DeckController : MonoBehaviour
     {
-        private readonly Deck _deck;
-        private readonly SignalBus _signalBus;
-        private readonly UnitsSystem _unitsSystem;
-        private readonly Dictionary<int,TaskCompletionSource<bool>> _tasks = new Dictionary<int,TaskCompletionSource<bool>>();
-        private int _nextTaskID;
-        private TaskCompletionSource<bool> _turnCompletion;
-        private Task _endTurnTask = Task.CompletedTask;
-        private CancellationToken _cancellationToken;
-    
+        private Deck _deck;
+        private UnitsSystem _unitsSystem;
+        private int _nextActionID;
+        private readonly List<int> _pendingActionIDs = new List<int>();
+        
+        public event Action StartingHandDealt;
+        public event Action<int, Card, int> CardDrawStarted;
+        public event Action CardDrawEnded;
+        public event Action<int, int> CardDiscardStarted;
+        public event Action CardDiscardEnded;
+        public event Action<int> CardPlayStarted;
+        public event Action EndTurnRequested; 
+        public event Action PlayerTurnEnded;
+        
         [Inject]
-        public DeckController(Deck deck, UnitsSystem unitsSystem, SignalBus signalBus)
+        public void Construct(Deck deck, UnitsSystem unitsSystem)
         {
             _unitsSystem = unitsSystem;
             _deck = deck;
-            _signalBus = signalBus;
         }
 
-        public void Initialize()
+        public void StartPlayerTurn()
         {
-            _signalBus.Subscribe<DrawCardFinishedSignal>(OnCardDrawn);
-            _signalBus.Subscribe<DiscardCardFinishedSignal>(OnDiscardCardFinished);
-            _signalBus.Subscribe<PlayCardFinishedSignal>(OnPlayCardFinished);
-            _signalBus.Subscribe<EndTurnRequestedSignal>(OnEndTurnRequested);
+            StartCoroutine(DealStartingHandCoroutine());
         }
-        
-        public void Dispose()
-        {
-            _signalBus.Unsubscribe<DrawCardFinishedSignal>(OnCardDrawn);
-            _signalBus.Unsubscribe<DiscardCardFinishedSignal>(OnDiscardCardFinished);
-            _signalBus.Unsubscribe<PlayCardFinishedSignal>(OnPlayCardFinished);
-            _signalBus.Unsubscribe<EndTurnRequestedSignal>(OnEndTurnRequested);
 
-            foreach (var pair in _tasks)
-            {
-                pair.Value.TrySetCanceled();
-            }
-            _tasks.Clear();
+        public void RegisterCardDraw(int actionID)
+        {
+            _pendingActionIDs.Remove(actionID);
+        }
+
+        public void RegisterCardDiscard(int actionID)
+        {
+            _pendingActionIDs.Remove(actionID);
         }
         
-        public async Task MakeTurnAsync(CancellationToken ct)
+        public IEnumerator DrawCardCoroutine(int handIndex, Action drawFinishedCallBack = null)
         {
-            _cancellationToken = ct;
-            _turnCompletion = new TaskCompletionSource<bool>();
-            
-            _signalBus.Fire<PlayerTurnStartedSignal>();
-            
-            await DealStartingHandAsync(_cancellationToken);
-        
-            _signalBus.Fire(new StartingHandDealtSignal());
-        
-            _turnCompletion = new TaskCompletionSource<bool>();
-            
-            await _turnCompletion.Task;
-        }
-        
-        private async Task DealStartingHandAsync(CancellationToken ct)
-        {
-            for (int i = 0; i < Deck.HandSize; i++)
-            {
-                await DrawCardAsync(i, ct);
-            }
-        }
-        
-        public async Task DrawCardAsync(int handIndex, CancellationToken ct)
-        {
+            _nextActionID++;
+            _pendingActionIDs.Add(_nextActionID);
             Card card = _deck.DrawCard(handIndex);
-            TaskCompletionSource<bool> tcs = new TaskCompletionSource<bool>();
-            _tasks.Add(++_nextTaskID, tcs);
-        
-            _signalBus.Fire(new DrawCardStartedSignal(handIndex, card, _nextTaskID));
-        
-            await tcs.Task;
-        }
-        
-        private void OnCardDrawn(DrawCardFinishedSignal signal)
-        {
-            if (_tasks.Remove(signal.TaskID, out var tcs))
-                tcs.TrySetResult(true);
-        }
-
-        public async Task DiscardCardAsync(int handIndex, CancellationToken ct)
-        {
-            Card card = _deck.Discard(handIndex);
-        
-            TaskCompletionSource<bool> tcs = new TaskCompletionSource<bool>();
-            _tasks.Add(++_nextTaskID, tcs);
-        
-            _signalBus.Fire(new DiscardCardStartedSignal(handIndex, card, _nextTaskID));
-        
-            await tcs.Task;
-        }
-
-        private void OnDiscardCardFinished(DiscardCardFinishedSignal signal)
-        {
-            if (_tasks.Remove(signal.TaskID, out var tcs))
-                tcs.TrySetResult(true);
-        }
-
-        private async Task PlayHand(CancellationToken ct)
-        {
-            var hand = _deck.Hand;
+            CardDrawStarted?.Invoke(handIndex, card, _nextActionID);
             
+            while (_pendingActionIDs.Contains(_nextActionID))
+            {
+                yield return null;
+            }
+            
+            CardDrawEnded?.Invoke();
+            drawFinishedCallBack?.Invoke();
+        }
+
+        public IEnumerator DiscardCardCoroutine(int handIndex, Action discardFinishedCallBack = null)
+        {
+            _nextActionID++;
+            _pendingActionIDs.Add(_nextActionID);
+            _deck.Discard(handIndex);
+            CardDiscardStarted?.Invoke(handIndex, _nextActionID);
+            
+            while (_pendingActionIDs.Contains(_nextActionID))
+            {
+                yield return null;
+            }
+            
+            CardDiscardEnded?.Invoke();
+            discardFinishedCallBack?.Invoke();
+        }
+        
+        private IEnumerator PlayCardCoroutine(int handIndex)
+        {
+            if (_unitsSystem.Enemies.Count == 0) yield break;
+            
+            Card card = _deck.Hand[handIndex];
+            CardPlayStarted?.Invoke(handIndex);
+
+            if (card.ActionType == CardActionType.Attack)
+            {
+                var enemies = _unitsSystem.Enemies.ToArray();
+                
+                yield return _unitsSystem.Player.AttackCoroutine(enemies[0],card.Value);
+            }
+
+            if (card.ActionType == CardActionType.Defense)
+            {
+                yield return _unitsSystem.Player.GainBlockCoroutine(card.Value);
+            }
+        }
+        
+        private IEnumerator DealStartingHandCoroutine()
+        {
             for (int i = 0; i < Deck.HandSize; i++)
             {
-                if (_unitsSystem.Enemies.Count ==0)
-                {
-                    break;
-                }
-                
-                Card card = hand[i];
-                TaskCompletionSource<bool> playTask = new TaskCompletionSource<bool>();
-                _tasks.Add(++_nextTaskID, playTask);
-                _signalBus.Fire(new PlayCardStartedSignal(i, _nextTaskID));
-                
-                if (card.ActionType == CardActionType.Defense)
-                {
-                    await _unitsSystem.Player.GainBlockAsync(card.Value, ct);
-                }
-
-                if (card.ActionType == CardActionType.Attack)
-                {
-                    Enemy firstEnemy = _unitsSystem.Enemies.ToArray()[0].Value;
-                    
-                    await _unitsSystem.Player.AttackAsync(firstEnemy, card.Value, ct);
-                }
-                
-                await playTask.Task;
-                await DiscardCardAsync(i, ct);
+                yield return DrawCardCoroutine(i);
             }
+            
+            StartingHandDealt?.Invoke();
         }
         
-        private void OnEndTurnRequested(EndTurnRequestedSignal signal)
+        private IEnumerator PlayHandCoroutine()
         {
-            if (_endTurnTask.IsCompleted)
-                _endTurnTask = EndTurnAsync(_cancellationToken);
-        }
-
-        private async Task EndTurnAsync(CancellationToken ct)
-        {
-            if (_tasks.Count>0)
+            for (int i = 0; i < _deck.Hand.Count; i++)
             {
-                Task[] remainingTasks = _tasks.Values.Select(x => x.Task).ToArray();
-                await Task.WhenAll(remainingTasks);
+                yield return PlayCardCoroutine(i);
+                yield return DiscardCardCoroutine(i);
             }
-            
-            await PlayHand(ct);
-            
-            _turnCompletion.TrySetResult(true);
+      
+            PlayerTurnEnded?.Invoke();
         }
-
-        private void OnPlayCardFinished(PlayCardFinishedSignal signal)
+        
+        public void RequestTurnEnd()
         {
-            _tasks[signal.TaskID].TrySetResult(true);
-            _tasks.Remove(signal.TaskID);
+            EndTurnRequested?.Invoke();
+            StartCoroutine(PlayHandCoroutine());
         }
     }
 }

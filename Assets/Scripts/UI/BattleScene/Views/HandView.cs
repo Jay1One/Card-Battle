@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 using Core.Card_Mechanics;
-using Core.Signals;
 using DG.Tweening;
+using Gameplay.Systems;
 using UnityEngine;
 using Zenject;
 
@@ -17,32 +17,33 @@ namespace UI.BattleScene.Views
         [SerializeField] private float _playAnimationDistance = 1f;
         [SerializeField] private float _playCardTime = 0.2f;
         
-        private  SignalBus _bus;
+
         private readonly CardView[] _cardViews = new CardView[Deck.HandSize];
         private CardViewFactory _cardViewFactory;
+        private DeckController _deckController;
     
         [Inject]
-        public void Construct(SignalBus bus, CardViewFactory viewFactory)
+        public void Construct(CardViewFactory viewFactory, DeckController deckController)
         {
-            _bus = bus;
             _cardViewFactory = viewFactory;
+            _deckController = deckController;
         }
 
         private void Awake()
         {
-            _bus.Subscribe<DrawCardStartedSignal>(OnDrawRequested);
-            _bus.Subscribe<PlayCardStartedSignal>(OnPlayRequested);
-            _bus.Subscribe<DiscardCardStartedSignal>(OnDiscardRequested);
+            _deckController.CardDrawStarted += OnDrawRequested;
+            _deckController.CardDiscardStarted += OnDiscardRequested;
+            _deckController.CardPlayStarted += OnPlayRequested;
         }
 
-        private void OnDiscardRequested(DiscardCardStartedSignal signal)
+        private void OnDiscardRequested(int handIndex, int actionId)
         {
-            StartCoroutine(AnimateDiscard(signal.HandIndex, signal.Card, signal.TaskID));
+            StartCoroutine(AnimateDiscard(handIndex, actionId));
         }
 
-        private void OnDrawRequested(DrawCardStartedSignal signal)
+        private void OnDrawRequested(int handIndex, Card card, int actionID)
         {
-            StartCoroutine(AnimateDraw(signal.HandIndex, signal.Card, signal.TaskID));
+            StartCoroutine(AnimateDraw(handIndex, card, actionID));
         }
 
         private IEnumerator AnimateDraw(int handIndex, Card card, int taskID)
@@ -55,10 +56,10 @@ namespace UI.BattleScene.Views
             yield return new WaitForSeconds(_drawTime);
         
             cardView.PlaceAtHand(handIndex);
-            _bus.Fire(new DrawCardFinishedSignal(card, taskID));
+            _deckController.RegisterCardDraw(taskID);
         }
 
-        private IEnumerator AnimateDiscard(int handIndex, Card card, int taskID)
+        private IEnumerator AnimateDiscard(int handIndex, int actionID)
         {
             CardView cardView = _cardViews[handIndex];
             cardView.transform.DOMove(_discardEndPoint.position, _discardTime);
@@ -67,29 +68,31 @@ namespace UI.BattleScene.Views
             yield return new WaitForSeconds(_discardTime);
         
             Destroy(cardView.gameObject);
-            _bus.Fire(new DiscardCardFinishedSignal(card, taskID));
+            _deckController.RegisterCardDiscard(actionID);
         }
 
-        private void OnPlayRequested(PlayCardStartedSignal signal)
+        private void OnPlayRequested(int handIndex)
         {
-            StartCoroutine(AnimatePlay(signal.HandIndex, signal.TaskID));
+            StartCoroutine(AnimatePlay(handIndex));
         }
 
-        private IEnumerator AnimatePlay(int handIndex, int taskID)
+        private IEnumerator AnimatePlay(int handIndex)
         {           
             CardView cardView = _cardViews[handIndex];
             Vector3 endPos = _handPoints[handIndex].position + Vector3.up * _playAnimationDistance;
             cardView.transform.DOMove(endPos, _playCardTime);
+            
             yield return new WaitForSeconds(_playCardTime);
-        
-            _bus.Fire(new PlayCardFinishedSignal(taskID));
         }
 
         public void OnDestroy()
         {
-            _bus.Unsubscribe<DrawCardStartedSignal>(OnDrawRequested);
-            _bus.Unsubscribe<PlayCardStartedSignal>(OnPlayRequested);
-            _bus.Unsubscribe<DiscardCardStartedSignal>(OnDiscardRequested);
+            if (_deckController != null)
+            {
+                _deckController.CardDrawStarted -= OnDrawRequested;
+                _deckController.CardDiscardStarted -= OnDiscardRequested;
+                _deckController.CardPlayStarted -= OnPlayRequested;
+            }
         }
     }
 }

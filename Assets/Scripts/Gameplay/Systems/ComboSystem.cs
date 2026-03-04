@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Linq;
 using Core.Card_Mechanics;
-using Core.Signals;
-using UnityEngine;
 using Zenject;
 
 namespace Gameplay.Systems
@@ -10,23 +7,23 @@ namespace Gameplay.Systems
     public class ComboSystem : IInitializable, IDisposable
     {
         private readonly Deck _deck;
-        private readonly SignalBus _signalBus;
+        private readonly DeckController _deckController;
         
         [Inject]
-        public ComboSystem(Deck deck, SignalBus signalBus)
+        public ComboSystem(Deck deck, DeckController deckController)
         {
             _deck = deck;
-            _signalBus = signalBus;
+            _deckController = deckController;
         }
 
         public void Initialize()
         {
-            _signalBus.Subscribe<DrawCardFinishedSignal>(OnDrawCardFinished);
+            _deckController.CardDrawEnded += OnDrawCardFinished;
         }
 
         public void Dispose()
         {
-            _signalBus.Unsubscribe<DrawCardFinishedSignal>(OnDrawCardFinished);
+            _deckController.CardDrawEnded -= OnDrawCardFinished;
         }
 
         private void OnDrawCardFinished()
